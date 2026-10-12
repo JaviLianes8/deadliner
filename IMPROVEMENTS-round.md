@@ -14,9 +14,9 @@ Progress:
 - [x] Docs: docstrings, README, GUIDE, CHANGELOG, version 0.2.0
 - [x] Contract test with injected clock
 - [x] Real stdlib integration tests (queue, Lock, subprocess, socket accept)
-- [ ] Real e2e: wheel, throwaway venv, external consumer, CLI
-- [ ] Gates green (ruff format, ruff check, mypy --strict src, pytest)
-- [ ] PR opened
+- [x] Real e2e: wheel, throwaway venv, external consumer, CLI
+- [x] Gates green (ruff format, ruff check, mypy --strict src, pytest)
+- [x] PR opened (#2)
 - [ ] Independent review, fixes, guard CLEAN
 
 ## Sources (fetched 2026-10-12)
