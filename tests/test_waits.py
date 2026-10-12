@@ -4,8 +4,9 @@ import asyncio
 
 import pytest
 
-from conftest import FakeClock
 from deadliner import Deadline, DeadlineExceeded
+
+from conftest import FakeClock
 
 
 def test_sleep_until_stops_at_the_target(fake: FakeClock) -> None:

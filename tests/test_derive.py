@@ -4,8 +4,9 @@ import math
 
 import pytest
 
-from conftest import FakeClock
 from deadliner import Deadline
+
+from conftest import FakeClock
 
 
 def test_after_matches_the_constructor(fake: FakeClock) -> None:

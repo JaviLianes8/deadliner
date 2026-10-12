@@ -7,8 +7,9 @@ import time
 
 import pytest
 
-from conftest import FakeClock
 from deadliner import Deadline
+
+from conftest import FakeClock
 
 
 def test_repr_shows_the_time_left(fake: FakeClock) -> None:

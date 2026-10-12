@@ -4,8 +4,9 @@ import math
 
 import pytest
 
-from conftest import FakeClock
 from deadliner import DeadlineExceeded, DeadlineExpired
+
+from conftest import FakeClock
 
 
 def test_deadline_exceeded_is_the_same_class_as_deadline_expired() -> None:

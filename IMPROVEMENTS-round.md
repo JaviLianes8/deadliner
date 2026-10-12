@@ -12,8 +12,8 @@ Progress:
 - [x] repr, pickling (rebased on load), copy
 - [x] CLI: run a command under a total budget
 - [ ] Docs: docstrings, README, GUIDE, CHANGELOG, version 0.2.0
-- [ ] Contract test with injected clock
-- [ ] Real stdlib integration tests (queue, Lock, subprocess, socket accept)
+- [x] Contract test with injected clock
+- [x] Real stdlib integration tests (queue, Lock, subprocess, socket accept)
 - [ ] Real e2e: wheel, throwaway venv, external consumer, CLI
 - [ ] Gates green (ruff format, ruff check, mypy --strict src, pytest)
 - [ ] PR opened
