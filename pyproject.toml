@@ -20,6 +20,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+deadliner = "deadliner._cli:main"
+
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest", "build", "twine"]
 
