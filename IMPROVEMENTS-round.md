@@ -18,7 +18,7 @@ Progress:
 - [x] Gates green (ruff format, ruff check, mypy --strict src, pytest)
 - [x] PR opened (#2)
 - [x] Independent review and fixes
-- [ ] Guard CLEAN after fixes
+- [x] Guard CLEAN after fixes
 
 ## Sources (fetched 2026-10-12)
 
