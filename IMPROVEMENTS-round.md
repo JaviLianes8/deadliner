@@ -17,7 +17,8 @@ Progress:
 - [x] Real e2e: wheel, throwaway venv, external consumer, CLI
 - [x] Gates green (ruff format, ruff check, mypy --strict src, pytest)
 - [x] PR opened (#2)
-- [ ] Independent review, fixes, guard CLEAN
+- [x] Independent review and fixes
+- [ ] Guard CLEAN after fixes
 
 ## Sources (fetched 2026-10-12)
 
@@ -42,8 +43,9 @@ Progress:
   not affected by system clock updates. The reference point of the returned value is
   undefined, so that only the difference between the results of two calls is valid."
 - `threading.Lock.acquire`: https://docs.python.org/3/library/threading.html.
-  "A timeout argument of -1 specifies an unbounded wait." A negative remaining time
-  passed straight through is therefore not a short wait.
+  "A timeout argument of -1 specifies an unbounded wait." Other negative values raise
+  `ValueError` (observed on 3.11 and 3.13), so a raw negative remainder is never a
+  short wait.
 - `queue.Queue.get`: https://docs.python.org/3/library/queue.html. A negative timeout
   raises `ValueError: 'timeout' must be a non-negative number` (observed on 3.13).
 - `socket.settimeout`: https://docs.python.org/3/library/socket.html. "If zero is

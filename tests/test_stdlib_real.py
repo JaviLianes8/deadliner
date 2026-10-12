@@ -53,7 +53,7 @@ def test_lock_acquire_gives_up_when_the_budget_runs_out() -> None:
 
 
 def test_lock_acquire_on_an_expired_budget_returns_at_once_instead_of_forever() -> None:
-    # Lock.acquire(timeout=-1) waits forever, so a raw negative value would hang here.
+    # Lock.acquire(timeout=-1) waits forever and other negatives raise ValueError.
     lock = threading.Lock()
     lock.acquire()
     try:
@@ -81,7 +81,7 @@ def test_subprocess_run_is_killed_when_the_budget_runs_out() -> None:
         )
     took = time.monotonic() - start
     assert 1.0 - SLACK <= took < 1.0 + CEILING
-    assert deadline.expired
+    assert deadline.remaining <= SLACK  # Windows rounds the wait down to whole ms
 
 
 def test_subprocess_run_finishes_inside_the_budget() -> None:

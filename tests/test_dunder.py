@@ -4,6 +4,7 @@ import copy
 import math
 import pickle
 import time
+import weakref
 
 import pytest
 
@@ -26,11 +27,14 @@ def test_repr_of_never(fake: FakeClock) -> None:
     assert repr(fake.never()) == "Deadline(never)"
 
 
-def test_copy_returns_the_same_immutable_object(fake: FakeClock) -> None:
+def test_copy_is_an_exact_clone_sharing_the_clock(fake: FakeClock) -> None:
     deadline = fake.deadline(1.0)
-    assert copy.copy(deadline) is deadline
-    assert copy.deepcopy(deadline) is deadline
-    assert copy.deepcopy([deadline])[0] is deadline
+    fake.now = 0.25
+    for clone in (copy.copy(deadline), copy.deepcopy(deadline), copy.deepcopy([deadline])[0]):
+        assert clone is not deadline
+        assert clone.when == deadline.when
+        assert clone.elapsed == deadline.elapsed
+        assert clone._clock == deadline._clock
 
 
 def test_pickle_stores_the_time_left_and_rebases_it() -> None:
@@ -64,7 +68,22 @@ def test_pickle_fails_loudly_on_an_unpicklable_clock() -> None:
         pickle.dumps(deadline)
 
 
-def test_deadlines_are_slotted(fake: FakeClock) -> None:
+def test_deadlines_keep_the_0_1_0_object_model(fake: FakeClock) -> None:
     deadline = fake.deadline(1.0)
-    with pytest.raises(AttributeError):
-        deadline.extra = 1  # type: ignore[attr-defined]
+    assert weakref.ref(deadline)() is deadline
+    deadline.tag = "request-42"  # type: ignore[attr-defined]
+
+
+class Budget(Deadline):
+    pass
+
+
+def test_subclasses_survive_every_derivation(fake: FakeClock) -> None:
+    root = Budget.at(5.0, clock=fake.time)
+    assert type(root) is Budget
+    assert type(Budget.after(1.0)) is Budget
+    assert type(Budget.never()) is Budget
+    assert type(root.child(1.0)) is Budget
+    assert all(type(step) is Budget for step in root.split(2))
+    assert type(copy.copy(root)) is Budget
+    assert type(pickle.loads(pickle.dumps(Budget(1.0)))) is Budget

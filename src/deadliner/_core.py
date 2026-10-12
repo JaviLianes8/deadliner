@@ -12,15 +12,16 @@ from ._errors import DeadlineExpired, exceeded
 __all__ = ["AsyncSleep", "Clock", "Sleep"]
 
 _T = TypeVar("_T")
+#: A zero-argument callable returning seconds on a monotonic scale.
 Clock = Callable[[], float]
+#: A callable that blocks for the given number of seconds.
 Sleep = Callable[[float], None]
+#: An async callable that waits for the given number of seconds.
 AsyncSleep = Callable[[float], Awaitable[None]]
 
 
 class _Core:
     """Holds the clock and the expiry time; answers how much is left."""
-
-    __slots__ = ("_async_sleep", "_clock", "_sleep", "_start", "_when")
 
     def __init__(
         self,
@@ -93,10 +94,21 @@ class _Core:
         Note that ``socket.settimeout(0.0)`` switches to non-blocking mode, so call
         :meth:`check` first when a zero would change the meaning of the call.
         """
+        if cap is not None and math.isnan(cap):
+            raise ValueError("cap must not be NaN")
         left = self.remaining
         if cap is not None:
             left = min(left, max(0.0, cap))
         return unbounded if left == math.inf else left
+
+    def _span(self, step: float) -> float:
+        if math.isnan(step):
+            raise ValueError("step must not be NaN")
+        return min(max(0.0, step), self.remaining)
+
+    def _settle(self) -> float:
+        # A cut sleep can wake before a coarse clock shows the deadline as passed.
+        return max(self.remaining, 0.001)
 
     def _exceeded(self, step: str | None) -> DeadlineExpired:
         return exceeded(step, max(0.0, self._clock() - self._when))

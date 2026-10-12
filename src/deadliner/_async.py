@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from collections.abc import Awaitable
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from ._core import _Core as Deadline
@@ -17,9 +17,14 @@ _T = TypeVar("_T")
 
 async def sleep_async(deadline: Deadline, step: float) -> float:
     """Await up to ``step`` seconds, never past ``deadline``; return the span slept."""
-    span = min(max(0.0, step), deadline.remaining)
+    nap = deadline._async_sleep or asyncio.sleep
+    span = deadline._span(step)
     if span > 0.0:
-        await (deadline._async_sleep or asyncio.sleep)(span)
+        await nap(span)
+        while span < step and not deadline.expired:
+            extra = deadline._settle()
+            await nap(extra)
+            span += extra
     return span
 
 
@@ -28,7 +33,9 @@ async def wait_for(deadline: Deadline, awaitable: Awaitable[_T], step: str | Non
 
     Errors raised by the awaitable itself, including its own ``TimeoutError``,
     propagate unchanged: only the deadline running out becomes
-    :class:`DeadlineExceeded`. Cancelling the caller cancels the awaitable too.
+    :class:`DeadlineExceeded`, chained to any error the awaitable raised while it
+    was being cancelled. Cancelling the caller cancels the awaitable too. As with
+    :func:`asyncio.wait_for`, work that ignores cancellation delays the error.
     """
     if deadline.expired:
         _discard(awaitable)
@@ -38,14 +45,20 @@ async def wait_for(deadline: Deadline, awaitable: Awaitable[_T], step: str | Non
         done, _ = await asyncio.wait({task}, timeout=deadline.timeout())
     except BaseException:
         task.cancel()
+        task.add_done_callback(_retrieve)
         raise
     if done:
         return task.result()
     task.cancel()
     await asyncio.wait({task})
+    cause = None if task.cancelled() else task.exception()
+    raise deadline._exceeded(step) from cause
+
+
+def _retrieve(task: asyncio.Future[Any]) -> None:
+    """Read a finished task's outcome so the loop never logs it as unretrieved."""
     if not task.cancelled():
-        task.exception()  # mark it retrieved; the deadline error wins
-    raise deadline._exceeded(step)
+        task.exception()
 
 
 def _discard(awaitable: Awaitable[object]) -> None:

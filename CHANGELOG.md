@@ -8,7 +8,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.2.0]
 
-All additions; 0.1.0 code keeps working unchanged.
+Additive API. Behaviour changes for 0.1.0 callers are listed under Changed.
+
+### Added
 
 - `Deadline.check(step=None)` returns the seconds left or raises `DeadlineExceeded`,
   whose `step` and `overrun` attributes say where and how late.
@@ -25,9 +27,18 @@ All additions; 0.1.0 code keeps working unchanged.
 - `repr`, pickling that rebases the time left on load, and `copy` support.
 - `deadliner DURATION COMMAND...` CLI (also `python -m deadliner`) with GNU `timeout`
   exit statuses.
-- A `NaN` budget now raises `ValueError` instead of building a deadline that reported
-  zero time left yet never expired.
+- `Clock`, `Sleep` and `AsyncSleep` type aliases for annotating injected clocks.
 - `GUIDE.md` with the full API, the rules it follows and recipes.
+
+### Changed
+
+- A `NaN` budget, step or cap now raises `ValueError` instead of building a deadline
+  that reported zero time left yet never expired, or silently doing nothing.
+- `sleep` cut short by the deadline now returns only once `expired` is true, even on
+  a clock coarser than the sleep (Windows before Python 3.13), so `sleep` followed by
+  `check` reliably raises.
+- `copy.copy` and `copy.deepcopy` return an exact clone that shares the clock; a deep
+  copy no longer copies the clock or sleep callables.
 
 ## [0.1.0]
 

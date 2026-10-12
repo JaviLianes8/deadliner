@@ -23,7 +23,7 @@ def test_parse_duration_accepts_inf() -> None:
     assert parse_duration("inf") == math.inf
 
 
-@pytest.mark.parametrize("text", ["", "abc", "-1", "nan", "5x", "s"])
+@pytest.mark.parametrize("text", ["", "abc", "-1", "nan", "5x", "s", " 5", "1_000", "5 ", "+5"])
 def test_parse_duration_rejects_bad_input(text: str) -> None:
     with pytest.raises(ValueError, match="invalid duration"):
         parse_duration(text)
@@ -77,3 +77,27 @@ def test_a_command_that_cannot_be_invoked_exits_126(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(subprocess, "run", denied)
     assert main(["5", "anything"]) == 126
+
+
+def test_a_second_double_dash_belongs_to_the_command() -> None:
+    script = "import sys; sys.exit(0 if sys.argv[1:] == ['--'] else 1)"
+    assert main(["10", "--", PY, "-c", script, "--"]) == 0
+
+
+def test_options_after_the_duration_belong_to_the_command() -> None:
+    assert main(["10", PY, "--version"]) == 0
+
+
+def test_ctrl_c_exits_130(monkeypatch: pytest.MonkeyPatch) -> None:
+    def interrupted(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(subprocess, "run", interrupted)
+    assert main(["5", "anything"]) == 130
+
+
+def test_version_and_help_still_work(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as info:
+        main(["--version"])
+    assert info.value.code == 0
+    assert "deadliner 0.2.0" in capsys.readouterr().out

@@ -13,6 +13,7 @@ from ._core import AsyncSleep, Clock, Sleep, _Core
 __all__ = ["Deadline"]
 
 _T = TypeVar("_T")
+_D = TypeVar("_D", bound="Deadline")
 
 
 class Deadline(_Core):
@@ -22,36 +23,34 @@ class Deadline(_Core):
     :func:`time.monotonic`, a clock that never goes backwards and ignores wall-clock
     changes. Each step reads :attr:`remaining`, calls :meth:`check` to stop once the
     budget is spent, hands stdlib calls :meth:`timeout`, and derives tighter budgets
-    with :meth:`child` and :meth:`split`. Instances are immutable.
+    with :meth:`child` and :meth:`split`. A deadline never changes its expiry.
 
     ``clock``, ``sleep`` and ``async_sleep`` are injectable so tests run without real
     waiting; every derived deadline shares them. ``async_sleep`` defaults to
     :func:`asyncio.sleep`.
     """
 
-    __slots__ = ()
-
     @classmethod
     def after(
-        cls,
+        cls: type[_D],
         seconds: float,
         *,
         clock: Clock = time.monotonic,
         sleep: Sleep = time.sleep,
         async_sleep: AsyncSleep | None = None,
-    ) -> Deadline:
+    ) -> _D:
         """A deadline ``seconds`` from now (Go's ``WithTimeout``). Same as the constructor."""
         return cls(seconds, clock=clock, sleep=sleep, async_sleep=async_sleep)
 
     @classmethod
     def at(
-        cls,
+        cls: type[_D],
         when: float,
         *,
         clock: Clock = time.monotonic,
         sleep: Sleep = time.sleep,
         async_sleep: AsyncSleep | None = None,
-    ) -> Deadline:
+    ) -> _D:
         """A deadline at absolute time ``when`` on ``clock`` (Go's ``WithDeadline``).
 
         ``when`` must come from the same clock, for example ``time.monotonic() + 3``.
@@ -60,16 +59,16 @@ class Deadline(_Core):
 
     @classmethod
     def never(
-        cls,
+        cls: type[_D],
         *,
         clock: Clock = time.monotonic,
         sleep: Sleep = time.sleep,
         async_sleep: AsyncSleep | None = None,
-    ) -> Deadline:
+    ) -> _D:
         """A deadline that never expires, for callers that set no limit."""
         return cls(math.inf, clock=clock, sleep=sleep, async_sleep=async_sleep)
 
-    def child(self, seconds: float) -> Deadline:
+    def child(self: _D, seconds: float) -> _D:
         """A deadline ``seconds`` from now, but never later than this one.
 
         Follows Go's ``WithDeadline``: if the parent expires first, the child is
@@ -79,7 +78,7 @@ class Deadline(_Core):
             raise ValueError("seconds must not be NaN")
         return self._spawn(min(self._when, self._clock() + seconds))
 
-    def split(self, parts: int | Sequence[float]) -> Iterator[Deadline]:
+    def split(self: _D, parts: int | Sequence[float]) -> Iterator[_D]:
         """Iterate over per-step deadlines that share this budget.
 
         ``parts`` is a step count (equal shares) or a sequence of positive weights.
@@ -92,17 +91,25 @@ class Deadline(_Core):
     def sleep(self, step: float) -> float:
         """Sleep up to ``step`` seconds, never past the deadline.
 
-        Returns the seconds actually slept, which is zero once expired.
+        Returns the seconds asked of the sleep function, zero once expired. When the
+        deadline cuts the sleep short, it returns only once :attr:`expired` is true,
+        even on a clock coarser than the sleep (Windows before Python 3.13).
         """
-        span = min(max(0.0, step), self.remaining)
+        span = self._span(step)
         if span > 0.0:
             self._sleep(span)
+            while span < step and not self.expired:
+                extra = self._settle()
+                self._sleep(extra)
+                span += extra
         return span
 
     def sleep_until(self, when: float) -> float:
         """Sleep until absolute time ``when`` on the deadline's clock or the deadline,
         whichever comes first. Returns the seconds slept."""
-        return self.sleep(min(when, self._when) - self._clock())
+        if math.isnan(when):
+            raise ValueError("when must not be NaN")
+        return self.sleep(math.inf if when >= self._when else when - self._clock())
 
     def wait_until(self, predicate: Callable[[], object], interval: float = 0.05) -> bool:
         """Poll ``predicate`` every ``interval`` seconds until it is truthy or time runs out.
@@ -142,21 +149,28 @@ class Deadline(_Core):
         # A monotonic reading means nothing in another process, so store the time
         # left and rebase it on load, as gRPC does when it propagates a deadline.
         args = (self._when - self._clock(), self._clock, self._sleep, self._async_sleep)
-        return (_restore, args)
 
-    def __copy__(self) -> Deadline:
-        return self
+        return (_restore, (type(self), *args))
 
-    def __deepcopy__(self, memo: dict[int, Any]) -> Deadline:
-        return self
+    def __copy__(self: _D) -> _D:
+        return self._spawn(self._when, start=self._start)
 
-    def _spawn(self, when: float) -> Deadline:
+    def __deepcopy__(self: _D, memo: dict[int, Any]) -> _D:
+        return self.__copy__()  # the clock and sleeps are shared, never copied
+
+    def _spawn(self: _D, when: float, *, start: float | None = None) -> _D:
         if math.isnan(when):
             raise ValueError("when must not be NaN")
-        new = Deadline(0.0, clock=self._clock, sleep=self._sleep, async_sleep=self._async_sleep)
+        new = object.__new__(type(self))
+        new._clock, new._sleep, new._async_sleep = self._clock, self._sleep, self._async_sleep
+        new._start = self._clock() if start is None else start
         new._when = when
         return new
 
 
-def _restore(left: float, clock: Clock, sleep: Sleep, async_sleep: AsyncSleep | None) -> Deadline:
-    return Deadline(left, clock=clock, sleep=sleep, async_sleep=async_sleep)
+def _restore(
+    cls: type[Deadline], left: float, clock: Clock, sleep: Sleep, async_sleep: AsyncSleep | None
+) -> Deadline:
+    new = object.__new__(cls)
+    _Core.__init__(new, left, clock=clock, sleep=sleep, async_sleep=async_sleep)
+    return new

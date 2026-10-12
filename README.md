@@ -87,8 +87,8 @@ deadliner 5m make release
 
 Bounding a multi-step operation usually means scattering `time.monotonic()`
 arithmetic across the call stack, and a negative remainder passed straight to a
-stdlib call is a real bug: `threading.Lock.acquire(timeout=-1)` waits forever and
-`queue.Queue.get` raises `ValueError`. `asyncio.timeout` cancels a block of async
+stdlib call is a real bug: `threading.Lock.acquire` waits forever on `-1` and raises
+`ValueError` on other negatives, and `queue.Queue.get` raises `ValueError` too. `asyncio.timeout` cancels a block of async
 code, but it is not an object you can pass to sync code, split across steps or check
 from a helper. deadliner is that object. The obvious package names do not fill this
 gap: `timebudget` is a speed profiler, and `deadline` wraps AWS Deadline Cloud.
