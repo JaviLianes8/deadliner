@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 
 import pytest
 
@@ -142,3 +143,21 @@ def test_wait_for_on_an_expired_deadline_cancels_a_future() -> None:
         return future.cancelled()
 
     assert asyncio.run(main()) is True
+
+
+if sys.version_info >= (3, 11):  # asyncio.timeout and timeout_at are 3.11+
+
+    def test_the_budget_feeds_asyncio_timeout_and_timeout_at() -> None:
+        async def main() -> None:
+            deadline = Deadline(0.05)
+            with pytest.raises(TimeoutError):
+                async with asyncio.timeout(deadline.timeout()):
+                    await asyncio.sleep(30)
+            later = Deadline(0.05)
+            with pytest.raises(TimeoutError):
+                async with asyncio.timeout_at(later.when):
+                    await asyncio.sleep(30)
+            async with asyncio.timeout(Deadline.never().timeout()):
+                await asyncio.sleep(0)
+
+        asyncio.run(main())  # the loop may fire a timer one clock tick early, so no expiry check

@@ -11,7 +11,7 @@ Progress:
 - [x] Async helpers (sleep_async, wait_for)
 - [x] repr, pickling (rebased on load), copy
 - [x] CLI: run a command under a total budget
-- [ ] Docs: docstrings, README, GUIDE, CHANGELOG, version 0.2.0
+- [x] Docs: docstrings, README, GUIDE, CHANGELOG, version 0.2.0
 - [x] Contract test with injected clock
 - [x] Real stdlib integration tests (queue, Lock, subprocess, socket accept)
 - [ ] Real e2e: wheel, throwaway venv, external consumer, CLI
