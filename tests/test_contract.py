@@ -4,7 +4,7 @@ import deadliner
 
 # The public API. Add every exported name here as the library grows; this list is the
 # contract and the test below fails if the module and this list disagree.
-PUBLIC_API: list[str] = ["Deadline", "DeadlineExpired"]
+PUBLIC_API: list[str] = ["Deadline", "DeadlineExceeded", "DeadlineExpired"]
 
 
 def test_all_lists_exactly_the_public_api() -> None:
