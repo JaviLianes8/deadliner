@@ -4,13 +4,13 @@ Progress:
 - [x] Repo read, main has the real 0.1.0 implementation
 - [x] Ground truth fetched and cited (see Sources)
 - [x] Brainstorm ranked (this file)
-- [ ] Core API: DeadlineExceeded alias, at/after/never constructors, when/elapsed, check()
-- [ ] Child deadlines and budget splitting
-- [ ] Stdlib timeout helper (never negative, unbounded sentinel)
-- [ ] sleep_until, wait_until polling
-- [ ] Async helpers (sleep_async, wait_for)
-- [ ] repr, pickling (rebased on load), copy
-- [ ] CLI: run a command under a total budget
+- [x] Core API: DeadlineExceeded alias, at/after/never constructors, when/elapsed, check()
+- [x] Child deadlines and budget splitting
+- [x] Stdlib timeout helper (never negative, unbounded sentinel)
+- [x] sleep_until, wait_until polling
+- [x] Async helpers (sleep_async, wait_for)
+- [x] repr, pickling (rebased on load), copy
+- [x] CLI: run a command under a total budget
 - [ ] Docs: docstrings, README, GUIDE, CHANGELOG, version 0.2.0
 - [ ] Contract test with injected clock
 - [ ] Real stdlib integration tests (queue, Lock, subprocess, socket accept)

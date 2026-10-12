@@ -72,7 +72,7 @@ class _Core:
         left = self._when - self._clock()
         if left > 0.0:
             return left
-        raise exceeded(step, -left)
+        raise exceeded(step, max(0.0, -left))
 
     def raise_if_expired(self, exc: type[BaseException] | BaseException = DeadlineExpired) -> None:
         """Raise ``exc`` (a type or an instance) if the deadline has passed."""

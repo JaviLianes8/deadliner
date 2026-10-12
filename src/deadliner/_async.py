@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import Awaitable
 from typing import TYPE_CHECKING, TypeVar
 
@@ -29,6 +30,9 @@ async def wait_for(deadline: Deadline, awaitable: Awaitable[_T], step: str | Non
     propagate unchanged: only the deadline running out becomes
     :class:`DeadlineExceeded`. Cancelling the caller cancels the awaitable too.
     """
+    if deadline.expired:
+        _discard(awaitable)
+        raise deadline._exceeded(step)
     task = asyncio.ensure_future(awaitable)
     try:
         done, _ = await asyncio.wait({task}, timeout=deadline.timeout())
@@ -42,3 +46,11 @@ async def wait_for(deadline: Deadline, awaitable: Awaitable[_T], step: str | Non
     if not task.cancelled():
         task.exception()  # mark it retrieved; the deadline error wins
     raise deadline._exceeded(step)
+
+
+def _discard(awaitable: Awaitable[object]) -> None:
+    """Drop work that will never start, without a "never awaited" warning."""
+    if inspect.iscoroutine(awaitable):
+        awaitable.close()
+    elif isinstance(awaitable, asyncio.Future):
+        awaitable.cancel()
