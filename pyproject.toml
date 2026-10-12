@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "deadliner"
-version = "0.1.0"
+version = "0.2.0"
 description = "Monotonic deadline and time-budget primitive for bounding multi-step operations"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,6 +19,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = []
+
+[project.scripts]
+deadliner = "deadliner._cli:main"
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest", "build", "twine"]
@@ -41,9 +44,14 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["deadliner"]
+known-local-folder = ["conftest"]
+
 [tool.mypy]
 python_version = "3.10"
 strict = true
+mypy_path = ["$MYPY_CONFIG_FILE_DIR/src", "$MYPY_CONFIG_FILE_DIR/tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

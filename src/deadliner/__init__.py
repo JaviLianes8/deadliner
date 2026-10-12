@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from ._deadline import Deadline, DeadlineExpired
+from ._core import AsyncSleep, Clock, Sleep
+from ._deadline import Deadline
+from ._errors import DeadlineExceeded, DeadlineExpired
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-__all__ = ["Deadline", "DeadlineExpired"]
+__all__ = ["AsyncSleep", "Clock", "Deadline", "DeadlineExceeded", "DeadlineExpired", "Sleep"]

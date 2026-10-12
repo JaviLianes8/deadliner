@@ -11,8 +11,9 @@ pip install -r requirements-dev.txt
 ## Before you open a pull request
 
 - Keep public API in `src/deadliner/__init__.py`; internals live in `_`-prefixed modules.
-- Add a test for the behaviour you change. Tests inject time, disk and network; they
-  never touch the real thing.
+- Add a test for the behaviour you change. Unit tests inject the clock and sleeps and
+  never wait for real. Tests that use the real clock (`tests/test_stdlib_real.py`)
+  assert lower bounds plus a generous ceiling only, so they cannot flake.
 - Run `scripts/check.ps1` (format, lint, types, tests) and make sure it passes.
 - One logical change per commit, imperative subject line.
 
