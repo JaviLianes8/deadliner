@@ -1,0 +1,42 @@
+{
+  "time.rst": {
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/library/time.rst",
+    "fetched": "2026-11-03",
+    "revision": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/library/time.rst",
+    "size": 41017,
+    "sha256": "949d9e5b2fef70559990e41a9a1609ebc8ca21d3aaf8c83b37058de175a76813",
+    "license": "PSF-2.0"
+  },
+  "asyncio-task.rst": {
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/library/asyncio-task.rst",
+    "fetched": "2026-11-03",
+    "revision": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/library/asyncio-task.rst",
+    "size": 50912,
+    "sha256": "01af79f446bff7cd18a466bf8abc1d6e0a6c6038c10b01a0ac5ce0cb96ce0959",
+    "license": "PSF-2.0"
+  },
+  "context.go": {
+    "url": "https://raw.githubusercontent.com/golang/go/go1.25.0/src/context/context.go",
+    "fetched": "2026-11-03",
+    "revision": "https://raw.githubusercontent.com/golang/go/go1.25.0/src/context/context.go",
+    "size": 25166,
+    "sha256": "ad9f8e2a4ecf9232682060f2063f17d63508c636eed71599e7e777ef1a539637",
+    "license": "BSD-3-Clause"
+  },
+  "coreutils.texi": {
+    "url": "https://raw.githubusercontent.com/coreutils/coreutils/v9.7/doc/coreutils.texi",
+    "fetched": "2026-11-03",
+    "revision": "https://raw.githubusercontent.com/coreutils/coreutils/v9.7/doc/coreutils.texi",
+    "size": 667701,
+    "sha256": "39b126752866fff675e462bd44d76f3e034abafe462a069cebd53ef39fc53eca",
+    "license": "GFDL-1.3-or-later"
+  },
+  "pypi.json": {
+    "url": "https://pypi.org/pypi/deadliner/json",
+    "fetched": "2026-11-03",
+    "revision": "https://pypi.org/pypi/deadliner/json",
+    "size": 8099,
+    "sha256": "af6c99b1f8a78b6ec274c1b365b7695b5bbbcf6725a42598f49ee1d350908da3",
+    "license": "PyPI metadata"
+  }
+}

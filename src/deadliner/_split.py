@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 import math
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, TypeVar
@@ -23,13 +22,25 @@ def _shares(parts: int | Sequence[float]) -> Iterator[float]:
         if parts < 1:
             raise ValueError("parts must be at least 1")
         return (1.0 / (parts - index) for index in range(parts))
-    weights = [float(w) for w in parts]
+    try:
+        weights = [float(w) for w in parts]
+    except (ValueError, OverflowError):
+        raise ValueError("every weight must be a finite number above zero") from None
     if not weights:
         raise ValueError("weights must not be empty")
     if any(not math.isfinite(w) or w <= 0.0 for w in weights):
         raise ValueError("every weight must be a finite number above zero")
-    rests = list(itertools.accumulate(reversed(weights)))[::-1]
-    return (weight / rest for weight, rest in zip(weights, rests, strict=True))
+    # Scale each suffix independently so neither its sum nor a tiny tail is lost.
+    shares = []
+    scale = total = 0.0
+    for weight in reversed(weights):
+        if weight > scale:
+            total = total * (scale / weight) + 1.0
+            scale = weight
+        else:
+            total += weight / scale
+        shares.append((weight / scale) / total)
+    return reversed(shares)
 
 
 def split(parent: _D, parts: int | Sequence[float]) -> Iterator[_D]:
@@ -41,4 +52,5 @@ def _steps(parent: _D, shares: Iterator[float]) -> Iterator[_D]:
     for share in shares:
         now = parent._clock()
         left = max(0.0, parent.when - now)
-        yield parent._spawn(min(parent.when, now + left * share))
+        when = parent.when if share == 1.0 or parent.infinite else now + left * share
+        yield parent._spawn(min(parent.when, when))

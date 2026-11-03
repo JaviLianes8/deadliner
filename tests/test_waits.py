@@ -97,7 +97,7 @@ def test_wait_for_cancels_the_work_and_raises_on_expiry() -> None:
             cancelled.append(True)
             raise
 
-    with pytest.raises(DeadlineExceeded, match="during slow") as info:
+    with pytest.raises(DeadlineExceeded, match="deadline exceeded") as info:
         asyncio.run(Deadline(0.05).wait_for(work(), "slow"))
     assert cancelled == [True]
     assert info.value.step == "slow"

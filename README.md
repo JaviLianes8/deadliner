@@ -1,11 +1,10 @@
 # deadliner
 
-Monotonic deadline and time-budget primitive for bounding multi-step operations.
+[![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)](https://lianes8studio.com/certified)
 
-Create one `Deadline`, pass it down the call stack, and every step can ask how much
-time is left, stop with a typed error once it is gone, hand a safe `timeout=` to any
-blocking stdlib call, and carve out tighter budgets for sub-steps. Sync and async,
-fully typed, zero runtime dependencies.
+One monotonic time budget for a multi-step operation. Create a deadline, pass it to
+helpers, and give each blocking call the time still available. Sync and async,
+Python 3.10+, typed, with no runtime dependencies.
 
 ## Install
 
@@ -13,92 +12,94 @@ fully typed, zero runtime dependencies.
 pip install deadliner
 ```
 
-## Usage
+## Quick start
 
 ```python
 import queue
-import subprocess
-
 from deadliner import Deadline, DeadlineExceeded
 
-deadline = Deadline(5.0)  # five seconds from now, on time.monotonic()
+jobs: queue.Queue[str] = queue.Queue()
+jobs.put("ready")
+deadline = Deadline(5.0)
+deadline.check("fetch")
+assert jobs.get(timeout=deadline.timeout()) == "ready"
+assert deadline.child(1.0).when <= deadline.when
 
 try:
-    deadline.check("fetch")  # raises DeadlineExceeded once the budget is gone
-    item = jobs.get(timeout=deadline.timeout())  # never negative, None if unbounded
-    subprocess.run(["make", "build"], timeout=deadline.timeout(), check=True)
-except DeadlineExceeded as exc:
-    print(exc.step, exc.overrun)  # "fetch", seconds past the deadline
+    Deadline(0).check("finish")
+except DeadlineExceeded as error:
+    assert error.step == "finish"
 ```
 
-Derive tighter budgets. A child never outlives its parent, like Go's
-`context.WithDeadline`:
+Allocate the remaining budget across stages. Unused time rolls into later stages:
 
 ```python
-connect = deadline.child(1.0)  # at most 1s, and never past `deadline`
+from deadliner import Deadline
 
-for step in deadline.split(3):  # three equal shares; unused time rolls over
-    run_stage(timeout=step.timeout())
-
-for step in deadline.split([1, 2, 1]):  # weighted shares
-    ...
-```
-
-Wait without overshooting:
-
-```python
-deadline.sleep(0.5)  # back off, but never past the deadline
-deadline.wait_until(lambda: job.done, interval=0.1)  # poll; False on expiry
-await deadline.sleep_async(0.5)
-result = await deadline.wait_for(fetch(), "fetch")  # cancels fetch on expiry
-```
-
-An infinite deadline is a real value, so "no limit" needs no special cases:
-
-```python
-deadline = Deadline.never()
-deadline.timeout()  # None, which queue/subprocess/socket read as "block"
-lock.acquire(timeout=deadline.timeout(unbounded=-1))  # -1 is Lock's "block"
-```
-
-The clock and sleeps are injectable, so tests never wait for real:
-
-```python
 now = [0.0]
-deadline = Deadline(10.0, clock=lambda: now[0], sleep=lambda s: None)
-now[0] = 11.0
-assert deadline.expired
+deadline = Deadline(8.0, clock=lambda: now[0])
+ends = []
+for stage in deadline.split([1, 2, 1]):
+    ends.append(stage.when)
+    now[0] = stage.when
+assert ends == [2.0, 6.0, 8.0]
+assert Deadline.never().timeout() is None
 ```
 
-See [GUIDE.md](GUIDE.md) for the full API, the rules it follows and recipes.
+Await work under the same budget:
+
+```python
+import asyncio
+from deadliner import Deadline
+
+
+async def example() -> int:
+    deadline = Deadline(5.0)
+    return await deadline.wait_for(asyncio.sleep(0, result=7))
+
+
+assert asyncio.run(example()) == 7
+```
 
 ## Command line
 
-`deadliner DURATION COMMAND...` runs a command and stops it once the duration has
-passed, with the exit statuses of GNU `timeout` (124 on timeout). It works the same on
-Windows, where no such tool ships:
+```
+deadliner 30s -- python -c "print('ready')"
+python -m deadliner 5m -- python -c "print('ready')"
+```
 
-```
-deadliner 30s -- python -m pytest
-deadliner 5m make release
-```
+Durations accept seconds or `s`, `m`, `h`, `d` suffixes; zero disables the limit.
+A timeout exits 124. Only the direct child is killed, not its descendants.
 
 ## Why
 
-Bounding a multi-step operation usually means scattering `time.monotonic()`
-arithmetic across the call stack, and a negative remainder passed straight to a
-stdlib call is a real bug: `threading.Lock.acquire` waits forever on `-1` and raises
-`ValueError` on other negatives, and `queue.Queue.get` raises `ValueError` too. `asyncio.timeout` cancels a block of async
-code, but it is not an object you can pass to sync code, split across steps or check
-from a helper. deadliner is that object. The obvious package names do not fill this
-gap: `timebudget` is a speed profiler, and `deadline` wraps AWS Deadline Cloud.
+Manual `time.monotonic()` arithmetic works well for a single call. Across several
+helpers, deadliner centralizes the expiry and clamps negative remainders to zero.
+[`asyncio.timeout`](https://docs.python.org/3/library/asyncio-task.html#asyncio.timeout)
+(Python 3.11+) bounds an async block; deadliner also supplies timeout values to sync
+code and divides budgets among stages. Use the standard library directly when
+those extra operations are unnecessary.
+
+The CLI follows the basic exit-status convention of
+[GNU timeout](https://www.gnu.org/software/coreutils/manual/html_node/timeout-invocation.html).
+It is not a full replacement: it has no process-group management, signal selection,
+or kill grace period. Deadlines do not interrupt ordinary Python code; callers must
+check them or pass their timeout to an operation that enforces it. Sleeps can
+overshoot because of scheduling or coarse clocks.
+
+See the [GUIDE](https://github.com/JaviLianes8/deadliner/blob/main/GUIDE.md) for every
+operation, error and limitation, and the
+[CHANGELOG](https://github.com/JaviLianes8/deadliner/blob/main/CHANGELOG.md) for changes.
+
+## Development
+
+Install `deadliner[dev]`. `scripts/check.ps1` runs formatting, lint, strict typing
+and tests. Set `DEADLINER_SCRATCH` to a private working directory for test files.
+`scripts/fetch_upstream.py DESTINATION --manifest MANIFEST` fetches the official
+sources. Set `DEADLINER_UPSTREAM` to that destination to enable reference tests.
+The committed `UPSTREAM-MANIFEST.json` records the certification source hashes;
+fetched text is neither committed nor distributed.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
-## Links
-
-- Website: https://lianes8studio.com
-- GitHub: https://github.com/JaviLianes8
-- LinkedIn: https://www.linkedin.com/in/jlianes/
+MIT. See [LICENSE](https://github.com/JaviLianes8/deadliner/blob/main/LICENSE).

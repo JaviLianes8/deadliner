@@ -33,7 +33,7 @@ def test_check_raises_at_the_exact_deadline(fake: FakeClock) -> None:
 def test_check_names_the_step_and_the_overrun(fake: FakeClock) -> None:
     deadline = fake.deadline(1.0)
     fake.now = 1.25
-    with pytest.raises(DeadlineExpired, match=r"during fetch \(overrun 0\.250s\)") as info:
+    with pytest.raises(DeadlineExpired, match=r"deadline exceeded \(overrun 0\.250s\)") as info:
         deadline.check("fetch")
     assert info.value.step == "fetch"
     assert info.value.overrun == 0.25

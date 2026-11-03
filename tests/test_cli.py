@@ -100,4 +100,4 @@ def test_version_and_help_still_work(capsys: pytest.CaptureFixture[str]) -> None
     with pytest.raises(SystemExit) as info:
         main(["--version"])
     assert info.value.code == 0
-    assert "deadliner 0.2.0" in capsys.readouterr().out
+    assert "deadliner 1.0.0" in capsys.readouterr().out

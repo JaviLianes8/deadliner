@@ -132,7 +132,7 @@ def test_one_budget_bounds_several_real_steps() -> None:
     took = time.monotonic() - start
     assert BUDGET * 2 - SLACK <= took < CEILING
     deadline.sleep(CEILING)
-    with pytest.raises(DeadlineExceeded, match="after the last step"):
+    with pytest.raises(DeadlineExceeded, match="deadline exceeded"):
         deadline.check("after the last step")
 
 

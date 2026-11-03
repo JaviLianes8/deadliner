@@ -6,6 +6,33 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-03
+
+### Stable
+
+- The six public names, deadline constructors and queries, child and split budgets,
+  synchronous and asynchronous waiting, typed timeout errors, and command-line runner.
+- Python 3.10 to 3.14, typed callbacks, and no runtime dependencies.
+
+### Changed
+
+- `Clock`, `Sleep`, and `AsyncSleep` are callable protocols instead of Callable aliases;
+  functions remain structurally compatible, but the protocols cannot be instantiated
+  or used in runtime `isinstance` checks.
+- Generated deadline errors keep the full step in `error.step` but omit it from messages.
+  Large overrun values use scientific notation. CLI errors omit command names, arguments,
+  and OS error text; usage errors give a fixed help hint. Invalid durations are not echoed.
+- Weighted splitting avoids overflow of finite weight sums and preserves tiny suffixes.
+  The final split deadline is exactly the parent expiry, without rounding drift.
+- Errors from cancelled work are retrieved when the caller leaves during cleanup and
+  when an expired wait discards a completed future.
+- Long malformed numeric durations parse without quadratic repeated-digit backtracking.
+
+### Added
+
+- Runnable public docstrings, complete usage examples, reference-source manifest,
+  seeded properties, installed-wheel checks, and bounded-error contracts.
+
 ## [0.2.0]
 
 Additive API. Behaviour changes for 0.1.0 callers are listed under Changed.

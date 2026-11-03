@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import math
 import time
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from typing import Any, TypeVar
 
-from . import _async, _split
-from ._core import AsyncSleep, Clock, Sleep, _Core
+from . import _split
+from ._core import _Core
+from ._types import AsyncSleep, Clock, Sleep
+from ._waits import _Waits
 
 __all__ = ["Deadline"]
 
-_T = TypeVar("_T")
 _D = TypeVar("_D", bound="Deadline")
 
 
-class Deadline(_Core):
+class Deadline(_Waits):
     """A monotonic time budget you create once and pass down a call stack.
 
     ``Deadline(5.0)`` (or ``Deadline.after(5.0)``) expires five seconds from now on
@@ -28,6 +29,10 @@ class Deadline(_Core):
     ``clock``, ``sleep`` and ``async_sleep`` are injectable so tests run without real
     waiting; every derived deadline shares them. ``async_sleep`` defaults to
     :func:`asyncio.sleep`.
+
+    >>> from deadliner import Deadline
+    >>> Deadline(2, clock=lambda: 0.0).remaining
+    2.0
     """
 
     @classmethod
@@ -39,7 +44,12 @@ class Deadline(_Core):
         sleep: Sleep = time.sleep,
         async_sleep: AsyncSleep | None = None,
     ) -> _D:
-        """A deadline ``seconds`` from now (Go's ``WithTimeout``). Same as the constructor."""
+        """A deadline ``seconds`` from now (Go's ``WithTimeout``). Same as the constructor.
+
+        >>> from deadliner import Deadline
+        >>> Deadline.after(2, clock=lambda: 1.0).when
+        3.0
+        """
         return cls(seconds, clock=clock, sleep=sleep, async_sleep=async_sleep)
 
     @classmethod
@@ -54,6 +64,10 @@ class Deadline(_Core):
         """A deadline at absolute time ``when`` on ``clock`` (Go's ``WithDeadline``).
 
         ``when`` must come from the same clock, for example ``time.monotonic() + 3``.
+
+        >>> from deadliner import Deadline
+        >>> Deadline.at(4, clock=lambda: 1.0).remaining
+        3.0
         """
         return cls(0.0, clock=clock, sleep=sleep, async_sleep=async_sleep)._spawn(when)
 
@@ -65,7 +79,12 @@ class Deadline(_Core):
         sleep: Sleep = time.sleep,
         async_sleep: AsyncSleep | None = None,
     ) -> _D:
-        """A deadline that never expires, for callers that set no limit."""
+        """A deadline that never expires, for callers that set no limit.
+
+        >>> from deadliner import Deadline
+        >>> Deadline.never().timeout() is None
+        True
+        """
         return cls(math.inf, clock=clock, sleep=sleep, async_sleep=async_sleep)
 
     def child(self: _D, seconds: float) -> _D:
@@ -73,6 +92,10 @@ class Deadline(_Core):
 
         Follows Go's ``WithDeadline``: if the parent expires first, the child is
         equivalent to the parent.
+
+        >>> from deadliner import Deadline
+        >>> Deadline(5, clock=lambda: 0.0).child(10).when
+        5.0
         """
         if math.isnan(seconds):
             raise ValueError("seconds must not be NaN")
@@ -85,57 +108,12 @@ class Deadline(_Core):
         Each step's deadline is computed when the iterator reaches it, from the time
         then left, so time an early step does not use rolls over to the later ones.
         The last step always ends exactly at this deadline.
+
+        >>> from deadliner import Deadline
+        >>> [d.when for d in Deadline(6, clock=lambda: 0.0).split(3)]
+        [2.0, 3.0, 6.0]
         """
         return _split.split(self, parts)
-
-    def sleep(self, step: float) -> float:
-        """Sleep up to ``step`` seconds, never past the deadline.
-
-        Returns the seconds asked of the sleep function, zero once expired. When the
-        deadline cuts the sleep short, it returns only once :attr:`expired` is true,
-        even on a clock coarser than the sleep (Windows before Python 3.13).
-        """
-        span = self._span(step)
-        if span > 0.0:
-            self._sleep(span)
-            while span < step and not self.expired:
-                extra = self._settle()
-                self._sleep(extra)
-                span += extra
-        return span
-
-    def sleep_until(self, when: float) -> float:
-        """Sleep until absolute time ``when`` on the deadline's clock or the deadline,
-        whichever comes first. Returns the seconds slept."""
-        if math.isnan(when):
-            raise ValueError("when must not be NaN")
-        return self.sleep(math.inf if when >= self._when else when - self._clock())
-
-    def wait_until(self, predicate: Callable[[], object], interval: float = 0.05) -> bool:
-        """Poll ``predicate`` every ``interval`` seconds until it is truthy or time runs out.
-
-        Returns True as soon as the predicate holds, and False once the deadline has
-        passed. The predicate gets one last call at the deadline itself.
-        """
-        if not interval > 0.0:
-            raise ValueError("interval must be above zero")
-        while not predicate():
-            if self.expired:
-                return False
-            self.sleep(interval)
-        return True
-
-    async def sleep_async(self, step: float) -> float:
-        """Async :meth:`sleep`: await up to ``step`` seconds, never past the deadline."""
-        return await _async.sleep_async(self, step)
-
-    async def wait_for(self, awaitable: Awaitable[_T], step: str | None = None) -> _T:
-        """Await ``awaitable``; cancel it and raise :class:`DeadlineExceeded` on expiry.
-
-        Errors raised by the awaitable itself propagate unchanged. For a block of
-        async code use ``async with asyncio.timeout(deadline.timeout()):`` instead.
-        """
-        return await _async.wait_for(self, awaitable, step)
 
     def __repr__(self) -> str:
         if self.infinite:

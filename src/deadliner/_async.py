@@ -50,6 +50,7 @@ async def wait_for(deadline: Deadline, awaitable: Awaitable[_T], step: str | Non
     if done:
         return task.result()
     task.cancel()
+    task.add_done_callback(_retrieve)
     await asyncio.wait({task})
     cause = None if task.cancelled() else task.exception()
     raise deadline._exceeded(step) from cause
@@ -67,3 +68,4 @@ def _discard(awaitable: Awaitable[object]) -> None:
         awaitable.close()
     elif isinstance(awaitable, asyncio.Future):
         awaitable.cancel()
+        awaitable.add_done_callback(_retrieve)

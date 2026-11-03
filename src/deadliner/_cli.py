@@ -25,21 +25,21 @@ CANNOT_INVOKE = 126
 NOT_FOUND = 127
 INTERRUPTED = 130
 _UNITS = {"s": 1.0, "m": 60.0, "h": 3600.0, "d": 86400.0}
-_NUMBER = re.compile(r"(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][-+]?[0-9]+)?|inf(?:inity)?", re.I)
+_NUMBER = re.compile(r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?|inf(?:inity)?", re.I)
 
 
 def parse_duration(text: str) -> float:
     """Parse ``2.5``, ``30s``, ``5m``, ``1h`` or ``1d`` into seconds (GNU suffixes)."""
     number, unit = (text[:-1], text[-1]) if text[-1:] in _UNITS else (text, "s")
     if not _NUMBER.fullmatch(number):
-        raise ValueError(f"invalid duration: {text!r}")
+        raise ValueError("invalid duration")
     return float(number) * _UNITS[unit]
 
 
 class _Parser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         self.print_usage(sys.stderr)
-        self.exit(FAILED, f"{self.prog}: error: {message}\n")
+        self.exit(FAILED, "deadliner: invalid arguments; use --help\n")
 
 
 def _duration(text: str) -> float:
@@ -87,12 +87,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     except KeyboardInterrupt:
         return INTERRUPTED  # subprocess.run has already killed the child
     except subprocess.TimeoutExpired:
-        print(f"deadliner: {command[0]} timed out after {args.duration:g}s", file=sys.stderr)
+        print(f"deadliner: command timed out after {args.duration:g}s", file=sys.stderr)
         return TIMED_OUT
     except FileNotFoundError:
-        print(f"deadliner: {command[0]}: command not found", file=sys.stderr)
+        print("deadliner: command not found", file=sys.stderr)
         return NOT_FOUND
-    except OSError as exc:
-        print(f"deadliner: {command[0]}: {exc.strerror or exc}", file=sys.stderr)
+    except OSError:
+        print("deadliner: cannot invoke command", file=sys.stderr)
         return CANNOT_INVOKE
     return 128 - status if status < 0 else status

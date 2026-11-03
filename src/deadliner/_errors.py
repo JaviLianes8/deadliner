@@ -16,6 +16,13 @@ class DeadlineExpired(TimeoutError):
     ``overrun``
         Seconds past the deadline at the moment of the check (``None`` when the
         error was raised some other way).
+
+    >>> from deadliner import Deadline, DeadlineExpired
+    >>> try:
+    ...     Deadline(0, clock=lambda: 0.0).check("fetch")
+    ... except DeadlineExpired as error:
+    ...     print(error.step, error.overrun)
+    fetch 0.0
     """
 
     step: str | None = None
@@ -29,8 +36,8 @@ DeadlineExceeded = DeadlineExpired
 
 def exceeded(step: str | None, overrun: float) -> DeadlineExpired:
     """Build the error :meth:`Deadline.check` raises, with a readable message."""
-    where = f" during {step}" if step else ""
-    error = DeadlineExceeded(f"deadline exceeded{where} (overrun {overrun:.3f}s)")
+    span = f"{overrun:.3f}" if overrun < 1e9 else f"{overrun:.3g}"
+    error = DeadlineExceeded(f"deadline exceeded (overrun {span}s)")
     error.step = step
     error.overrun = overrun
     return error
